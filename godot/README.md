@@ -25,10 +25,17 @@ MVP de estrategia por turnos inspirado en Civilization, construido en Godot 4 co
 
 - `Click izquierdo`: seleccionar unidad/ciudad o dar orden de movimiento
 - `Click derecho`: dar orden a la unidad seleccionada
+- `Click medio + arrastrar`: mover camara arrastrando el mapa
 - `Rueda del mouse`: zoom in / zoom out
+- `+` / `-` (o teclado numerico): zoom in / zoom out
+- `Tab`: seleccionar siguiente unidad con movimientos
+- `Space`: siguiente unidad; si no hay, intentar terminar turno
+- `Esc`: limpiar seleccion
+- `C`: centrar camara en unidad/ciudad seleccionada
 - `F`: fundar ciudad con colono seleccionado
 - `Enter`: terminar turno
 - `WASD` o flechas: mover camara
+- `Mover mouse al borde del mapa`: desplazamiento de camara por borde
 - `N`: reiniciar partida
 
 ## Abrir en Godot 4

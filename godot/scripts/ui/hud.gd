@@ -5,8 +5,11 @@ signal end_turn_requested
 signal found_city_requested
 signal queue_requested(unit_type: String)
 signal new_game_requested
+signal next_unit_requested
 
 var stats_label: Label
+var phase_label: Label
+var pending_units_label: Label
 var selection_mode_label: Label
 var selection_info_label: Label
 var tile_info_label: Label
@@ -14,6 +17,7 @@ var logs_label: Label
 var winner_label: Label
 
 var end_turn_button: Button
+var next_unit_button: Button
 var found_city_button: Button
 var queue_warrior_button: Button
 var queue_scout_button: Button
@@ -68,6 +72,11 @@ func _build_ui() -> void:
 	subtitle.modulate = Color("#afbea8")
 	layout.add_child(subtitle)
 
+	phase_label = Label.new()
+	phase_label.text = "Tu turno"
+	phase_label.modulate = Color("#8ad7ff")
+	layout.add_child(phase_label)
+
 	var top_buttons = HBoxContainer.new()
 	layout.add_child(top_buttons)
 
@@ -81,6 +90,11 @@ func _build_ui() -> void:
 	end_turn_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	top_buttons.add_child(end_turn_button)
 
+	next_unit_button = Button.new()
+	next_unit_button.text = "Siguiente Unidad"
+	next_unit_button.pressed.connect(func() -> void: next_unit_requested.emit())
+	top_buttons.add_child(next_unit_button)
+
 	layout.add_child(_separator())
 	layout.add_child(_section_label("Estado"))
 
@@ -88,6 +102,11 @@ func _build_ui() -> void:
 	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stats_label.text = "-"
 	layout.add_child(stats_label)
+
+	pending_units_label = Label.new()
+	pending_units_label.text = "Unidades pendientes: 0"
+	pending_units_label.modulate = Color("#ffdf88")
+	layout.add_child(pending_units_label)
 
 	layout.add_child(_separator())
 	layout.add_child(_section_label("Seleccion"))
@@ -124,6 +143,15 @@ func _build_ui() -> void:
 	queue_settler_button.text = "Colono"
 	queue_settler_button.pressed.connect(func() -> void: queue_requested.emit("settler"))
 	queue_row.add_child(queue_settler_button)
+
+	layout.add_child(_separator())
+	layout.add_child(_section_label("Atajos"))
+
+	var shortcuts_label = Label.new()
+	shortcuts_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shortcuts_label.modulate = Color("#9db0b7")
+	shortcuts_label.text = "Tab: siguiente unidad | Space: siguiente/finalizar\nEsc: limpiar seleccion | C: centrar seleccion\nClick medio arrastrar: mover camara | Rueda: zoom"
+	layout.add_child(shortcuts_label)
 
 	layout.add_child(_separator())
 	layout.add_child(_section_label("Terreno"))
@@ -173,6 +201,26 @@ func update_stats(turn_number: int, player_name: String, gold: int, science: int
 func update_selection(mode: String, description: String) -> void:
 	selection_mode_label.text = mode
 	selection_info_label.text = description
+
+func update_pending_units(count: int) -> void:
+	pending_units_label.text = "Unidades pendientes: %d" % [count]
+	if count > 0:
+		pending_units_label.modulate = Color("#ffdf88")
+	else:
+		pending_units_label.modulate = Color("#9fadb6")
+
+func set_next_unit_state(enabled: bool) -> void:
+	next_unit_button.disabled = not enabled
+
+func set_end_turn_prompt(waiting_confirmation: bool, pending_units: int) -> void:
+	if waiting_confirmation and pending_units > 0:
+		end_turn_button.text = "Confirmar Fin (%d)" % [pending_units]
+	else:
+		end_turn_button.text = "Terminar Turno"
+
+func update_phase(text: String, player_controlled: bool) -> void:
+	phase_label.text = text
+	phase_label.modulate = Color("#8ad7ff") if player_controlled else Color("#d29eff")
 
 func update_tile_info(coords: String, description: String) -> void:
 	tile_info_label.text = "Casilla: %s\n%s" % [coords, description]

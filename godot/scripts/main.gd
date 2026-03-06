@@ -23,33 +23,65 @@ var map_size = Vector2i(44, 28)
 var view_tiles = Vector2i(30, 20)
 var camera_cell = Vector2i.ZERO
 var hover_cell = Vector2i(-1, -1)
+var pending_end_turn_confirmation = false
+var hover_path_steps = -1
+var hover_path_cost = -1
+var hover_combat_preview = ""
+var edge_pan_accumulator = 0.0
 
-const MAP_VIEW_SIZE_PIXELS = Vector2i(960, 640)
+const MAP_MARGIN_PIXELS = Vector2i(16, 16)
+const HUD_RESERVED_WIDTH = 376
+const MIN_MAP_VIEW_SIZE_PIXELS = Vector2i(640, 420)
 const MIN_CELL_SIZE = 20
-const MAX_CELL_SIZE = 56
+const MAX_CELL_SIZE = 96
 const ZOOM_STEP_PIXELS = 4
+const EDGE_PAN_MARGIN_PIXELS = 20.0
+const EDGE_PAN_INTERVAL = 0.05
+
+var map_view_size_pixels = Vector2i(960, 640)
 
 func _ready() -> void:
 	rng.randomize()
+	world_view.position = Vector2(MAP_MARGIN_PIXELS.x, MAP_MARGIN_PIXELS.y)
+	_update_map_view_size_from_viewport()
 	_recalculate_view_tiles()
 
 	world_view.configure(grid, rules, map_size, view_tiles)
 	world_view.tile_clicked.connect(_on_tile_clicked)
 	world_view.tile_hovered.connect(_on_tile_hovered)
 	world_view.zoom_requested.connect(_on_zoom_requested)
+	world_view.drag_pan_requested.connect(_on_drag_pan_requested)
 
 	hud.end_turn_requested.connect(_on_end_turn_requested)
 	hud.found_city_requested.connect(_on_found_city_requested)
 	hud.queue_requested.connect(_on_queue_requested)
 	hud.new_game_requested.connect(_on_new_game_requested)
+	hud.next_unit_requested.connect(_on_next_unit_requested)
 
 	_new_game()
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
+
+func _process(delta: float) -> void:
+	_process_edge_pan(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_ENTER, KEY_KP_ENTER:
 				_end_turn_from_human()
+			KEY_TAB:
+				_on_next_unit_requested()
+			KEY_SPACE:
+				if not _select_next_idle_unit(true):
+					_end_turn_from_human()
+				_sync_presentation()
+			KEY_ESCAPE:
+				state.clear_selection()
+				pending_end_turn_confirmation = false
+				_sync_presentation()
+			KEY_C:
+				_center_camera_on_selection()
+				_sync_presentation()
 			KEY_F:
 				_try_found_city_from_selected()
 			KEY_N:
@@ -62,6 +94,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_move_camera(Vector2i(0, -1))
 			KEY_S, KEY_DOWN:
 				_move_camera(Vector2i(0, 1))
+			KEY_EQUAL, KEY_KP_ADD:
+				_zoom_around_camera(1)
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				_zoom_around_camera(-1)
 
 func _new_game() -> void:
 	state = GameState.new()
@@ -89,6 +125,10 @@ func _new_game() -> void:
 
 	camera_cell = Vector2i.ZERO
 	_center_camera_on(starts[0])
+	pending_end_turn_confirmation = false
+	hover_path_steps = -1
+	hover_path_cost = -1
+	hover_combat_preview = ""
 
 	state.log("Nuevo mundo listo. Funda una ciudad con tu colono.")
 	state.log("Combate: chocar y resolver. Arquitectura lista para escalar.")
@@ -163,6 +203,7 @@ func _find_spawn_cell_around(origin: Vector2i) -> Vector2i:
 func _move_camera(delta: Vector2i) -> void:
 	camera_cell += delta
 	_clamp_camera()
+	pending_end_turn_confirmation = false
 	_sync_presentation()
 
 func _center_camera_on(cell: Vector2i) -> void:
@@ -173,10 +214,26 @@ func _clamp_camera() -> void:
 	camera_cell.x = clampi(camera_cell.x, 0, max(0, map_size.x - view_tiles.x))
 	camera_cell.y = clampi(camera_cell.y, 0, max(0, map_size.y - view_tiles.y))
 
+func _on_viewport_size_changed() -> void:
+	_update_map_view_size_from_viewport()
+	_recalculate_view_tiles()
+	world_view.set_view_tiles(view_tiles)
+	_clamp_camera()
+	_sync_presentation()
+
+func _update_map_view_size_from_viewport() -> void:
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var available_width = int(viewport_size.x) - HUD_RESERVED_WIDTH - MAP_MARGIN_PIXELS.x * 2
+	var available_height = int(viewport_size.y) - MAP_MARGIN_PIXELS.y * 2
+	map_view_size_pixels = Vector2i(
+		max(MIN_MAP_VIEW_SIZE_PIXELS.x, available_width),
+		max(MIN_MAP_VIEW_SIZE_PIXELS.y, available_height)
+	)
+
 func _recalculate_view_tiles() -> void:
 	view_tiles = Vector2i(
-		max(8, int(floor(float(MAP_VIEW_SIZE_PIXELS.x) / float(grid.cell_size)))),
-		max(6, int(floor(float(MAP_VIEW_SIZE_PIXELS.y) / float(grid.cell_size))))
+		max(8, int(floor(float(map_view_size_pixels.x) / float(grid.cell_size)))),
+		max(6, int(floor(float(map_view_size_pixels.y) / float(grid.cell_size))))
 	)
 
 func _on_zoom_requested(direction: int, focus_cell: Vector2i) -> void:
@@ -192,6 +249,19 @@ func _on_zoom_requested(direction: int, focus_cell: Vector2i) -> void:
 	if state.in_bounds(focus_cell):
 		camera_cell = focus_cell - Vector2i(int(view_tiles.x / 2), int(view_tiles.y / 2))
 	_clamp_camera()
+	pending_end_turn_confirmation = false
+	_sync_presentation()
+
+func _zoom_around_camera(direction: int) -> void:
+	var focus_cell = camera_cell + Vector2i(int(view_tiles.x / 2), int(view_tiles.y / 2))
+	_on_zoom_requested(direction, focus_cell)
+
+func _on_drag_pan_requested(delta_cells: Vector2i) -> void:
+	if delta_cells == Vector2i.ZERO:
+		return
+	camera_cell += delta_cells
+	_clamp_camera()
+	pending_end_turn_confirmation = false
 	_sync_presentation()
 
 func _on_tile_hovered(cell: Vector2i) -> void:
@@ -211,6 +281,7 @@ func _on_tile_clicked(cell: Vector2i, button_index: int) -> void:
 		_sync_presentation()
 		return
 
+	pending_end_turn_confirmation = false
 	if button_index == MOUSE_BUTTON_LEFT:
 		_handle_left_click(cell, current)
 	elif button_index == MOUSE_BUTTON_RIGHT:
@@ -258,6 +329,7 @@ func _issue_unit_order(unit, target_cell: Vector2i) -> void:
 		state.log("La unidad ya no tiene movimientos.")
 		return
 
+	pending_end_turn_confirmation = false
 	var target_unit = state.get_unit_at(target_cell)
 	if target_unit != null and target_unit.owner_id != unit.owner_id:
 		if grid.distance(unit.cell, target_cell) != 1:
@@ -267,6 +339,7 @@ func _issue_unit_order(unit, target_cell: Vector2i) -> void:
 			state.log("Este tipo de unidad no puede atacar.")
 			return
 		_resolve_combat(unit, target_unit)
+		_select_next_idle_unit(false)
 		return
 
 	var target_city = state.get_city_at(target_cell)
@@ -283,9 +356,11 @@ func _issue_unit_order(unit, target_cell: Vector2i) -> void:
 	var path = _reconstruct_path(reachable, target_cell)
 	if path.is_empty():
 		return
-	_move_unit_along_path(unit, path)
+	_move_unit_along_path(unit, path, true)
 	_capture_if_on_enemy_city(unit)
 	_check_victory()
+	if unit.moves_left <= 0:
+		_select_next_idle_unit(false)
 
 func _resolve_combat(attacker, defender) -> void:
 	var defender_cell = defender.cell
@@ -365,7 +440,7 @@ func _reconstruct_path(visited: Dictionary, target_cell: Vector2i) -> Array:
 		cursor = str(entry["prev"])
 	return out
 
-func _move_unit_along_path(unit, path: Array) -> void:
+func _move_unit_along_path(unit, path: Array, center_camera: bool) -> void:
 	var current = unit.cell
 	for step in path:
 		if step == current:
@@ -379,7 +454,8 @@ func _move_unit_along_path(unit, path: Array) -> void:
 		unit.cell = step
 		unit.moves_left -= move_cost
 		current = step
-	_center_camera_on(unit.cell)
+	if center_camera:
+		_center_camera_on(unit.cell)
 
 func _capture_if_on_enemy_city(unit) -> void:
 	var city = state.get_city_at(unit.cell)
@@ -396,6 +472,7 @@ func _check_victory() -> void:
 		state.log("%s domina el mundo." % [alive[0].name])
 
 func _on_found_city_requested() -> void:
+	pending_end_turn_confirmation = false
 	_try_found_city_from_selected()
 
 func _try_found_city_from_selected() -> void:
@@ -441,6 +518,7 @@ func _on_queue_requested(unit_type: String) -> void:
 		state.log("La ciudad necesita poblacion 2 para entrenar colonos.")
 		_sync_presentation()
 		return
+	pending_end_turn_confirmation = false
 	city.queue_type = unit_type
 	state.log("%s empieza a entrenar %s." % [city.name, rules.unit_info(unit_type)["name"]])
 	_sync_presentation()
@@ -452,7 +530,14 @@ func _end_turn_from_human() -> void:
 	var current = state.get_current_player()
 	if current == null or not current.is_human or state.winner_player_id != -1:
 		return
+	var pending_units = _count_idle_units(current)
+	if pending_units > 0 and not pending_end_turn_confirmation:
+		pending_end_turn_confirmation = true
+		state.log("Aun tienes %d unidad(es) con movimientos. Pulsa 'Terminar Turno' de nuevo para confirmar." % [pending_units])
+		_sync_presentation()
+		return
 
+	pending_end_turn_confirmation = false
 	_process_end_of_turn(current)
 	state.advance_player()
 
@@ -481,6 +566,9 @@ func _start_current_player_turn() -> void:
 	for unit in current.units:
 		unit.moves_left = unit.max_moves
 	_refresh_visibility(current)
+	if current.is_human:
+		_select_next_idle_unit(true)
+		pending_end_turn_confirmation = false
 	_check_victory()
 
 func _process_end_of_turn(player) -> void:
@@ -607,7 +695,7 @@ func _attack_adjacent_enemy(unit) -> bool:
 				return true
 	return false
 
-func _move_unit_toward(unit, target: Vector2i, allow_enemy_city_destination: bool) -> void:
+func _move_unit_toward(unit, target: Vector2i, allow_enemy_city_destination: bool, center_camera: bool = false) -> void:
 	if unit.moves_left <= 0:
 		return
 	var reachable = _reachable_map_for_unit(unit, allow_enemy_city_destination)
@@ -625,7 +713,7 @@ func _move_unit_toward(unit, target: Vector2i, allow_enemy_city_destination: boo
 	if best_key == "":
 		return
 	var path = _reconstruct_path(reachable, reachable[best_key]["cell"])
-	_move_unit_along_path(unit, path)
+	_move_unit_along_path(unit, path, center_camera)
 
 func _refresh_visibility(player) -> void:
 	player.visible_cells.clear()
@@ -651,14 +739,25 @@ func _sync_presentation() -> void:
 	var selected_city = _selected_city()
 
 	var reachable_cells: Array = []
+	var preview_path: Array = []
+	hover_path_steps = -1
+	hover_path_cost = -1
+	hover_combat_preview = ""
 	if selected_unit != null:
 		var reach_map = _reachable_map_for_unit(selected_unit, true)
 		for key in reach_map.keys():
 			reachable_cells.append(reach_map[key]["cell"])
+		if state.in_bounds(hover_cell):
+			var hover_key = _key(hover_cell)
+			if reach_map.has(hover_key):
+				preview_path = _reconstruct_path(reach_map, hover_cell)
+				hover_path_steps = preview_path.size()
+				hover_path_cost = int(reach_map[hover_key]["cost"])
+		hover_combat_preview = _combat_preview_text(selected_unit, hover_cell)
 
 	world_view.set_state(state)
 	world_view.set_camera(camera_cell)
-	world_view.set_selection(selected_unit, selected_city, reachable_cells)
+	world_view.set_selection(selected_unit, selected_city, reachable_cells, preview_path)
 
 	if current != null:
 		hud.update_stats(state.turn_number, current.name, current.gold, current.science, current.cities.size(), current.units.size())
@@ -668,6 +767,13 @@ func _sync_presentation() -> void:
 	hud.update_selection(_selection_mode(selected_unit, selected_city), _selection_text(selected_unit, selected_city))
 	hud.update_tile_info(_hover_coords_text(), _hover_tile_text())
 	hud.update_logs(state.logs)
+	var pending_units = 0
+	if current != null and current.is_human:
+		pending_units = _count_idle_units(current)
+	hud.update_pending_units(pending_units)
+	hud.set_next_unit_state(current != null and current.is_human and pending_units > 0 and state.winner_player_id == -1)
+	hud.set_end_turn_prompt(pending_end_turn_confirmation, pending_units)
+	hud.update_phase(_phase_text(), current != null and current.is_human and state.winner_player_id == -1)
 	hud.set_action_state(
 		current != null and current.is_human and state.winner_player_id == -1,
 		selected_unit != null and _can_found_city(selected_unit) and current != null and current.is_human,
@@ -733,6 +839,10 @@ func _hover_tile_text() -> String:
 		"Rendimiento: +%d comida, +%d produccion, +%d oro" % [tile_yield["food"], tile_yield["production"], tile_yield["gold"]],
 		"Movimiento: %s" % ["Bloqueado" if int(info["move_cost"]) >= 999 else str(info["move_cost"])],
 	]
+	if hover_path_steps > 0 and hover_path_cost >= 0:
+		lines.append("Ruta: %d pasos, costo %d PM." % [hover_path_steps, hover_path_cost])
+	if hover_combat_preview != "":
+		lines.append(hover_combat_preview)
 	var city = state.get_city_at(hover_cell)
 	if city != null and human.visible_cells.has(_key(hover_cell)):
 		lines.append("Ciudad: %s (%s)" % [city.name, state.get_player_by_id(city.owner_id).name])
@@ -745,3 +855,124 @@ func _hover_tile_text() -> String:
 
 func _key(cell: Vector2i) -> String:
 	return "%d,%d" % [cell.x, cell.y]
+
+func _count_idle_units(player) -> int:
+	var count = 0
+	for unit in player.units:
+		if unit.moves_left > 0:
+			count += 1
+	return count
+
+func _idle_units(player) -> Array:
+	var out: Array = []
+	for unit in player.units:
+		if unit.moves_left > 0:
+			out.append(unit)
+	return out
+
+func _select_next_idle_unit(center_camera: bool) -> bool:
+	var current = state.get_current_player()
+	if current == null or not current.is_human:
+		return false
+	var candidates = _idle_units(current)
+	if candidates.is_empty():
+		state.selected_unit_id = -1
+		return false
+
+	var selected = _selected_unit()
+	var next_index = 0
+	if selected != null:
+		for i in range(candidates.size()):
+			if candidates[i].id == selected.id:
+				next_index = (i + 1) % candidates.size()
+				break
+	var next_unit = candidates[next_index]
+	state.selected_unit_id = next_unit.id
+	state.selected_city_id = -1
+	if center_camera:
+		_center_camera_on(next_unit.cell)
+	return true
+
+func _on_next_unit_requested() -> void:
+	var current = state.get_current_player()
+	if state.winner_player_id != -1 or current == null or not current.is_human:
+		return
+	pending_end_turn_confirmation = false
+	if not _select_next_idle_unit(true):
+		state.log("No hay unidades pendientes este turno.")
+	_sync_presentation()
+
+func _center_camera_on_selection() -> void:
+	var unit = _selected_unit()
+	if unit != null:
+		_center_camera_on(unit.cell)
+		return
+	var city = _selected_city()
+	if city != null:
+		_center_camera_on(city.cell)
+
+func _phase_text() -> String:
+	if state.winner_player_id != -1:
+		return "Partida finalizada"
+	var current = state.get_current_player()
+	if current == null:
+		return "-"
+	if current.is_human:
+		return "Tu turno"
+	return "Turno IA: %s" % [current.name]
+
+func _combat_preview_text(attacker, target_cell: Vector2i) -> String:
+	if attacker == null or attacker.attack <= 0:
+		return ""
+	if not state.in_bounds(target_cell):
+		return ""
+	if grid.distance(attacker.cell, target_cell) != 1:
+		return ""
+	var defender = state.get_unit_at(target_cell)
+	if defender == null or defender.owner_id == attacker.owner_id:
+		return ""
+	var terrain_id: String = state.tiles[target_cell.y][target_cell.x]
+	var defense_bonus = rules.terrain_defense_bonus(terrain_id)
+	var attack_base = attacker.attack + 2 + int(attacker.hp / 3)
+	var defense_base = defender.attack + defense_bonus + 2 + int(defender.hp / 4)
+	var dealt = max(2, attack_base - int(defense_base / 2))
+	var retaliation = max(1, int(defense_base / 2))
+	return "Combate estimado: infliges ~%d, recibes ~%d." % [dealt, retaliation]
+
+func _process_edge_pan(delta: float) -> void:
+	var current = state.get_current_player()
+	if current == null or not current.is_human or state.winner_player_id != -1:
+		edge_pan_accumulator = 0.0
+		return
+	var mouse_screen = get_viewport().get_mouse_position()
+	var mouse_local = world_view.to_local(mouse_screen)
+	if not world_view.is_point_inside_map(mouse_local):
+		edge_pan_accumulator = 0.0
+		return
+
+	var pan_delta = Vector2i.ZERO
+	var map_pixel_width = float(view_tiles.x * grid.cell_size)
+	var map_pixel_height = float(view_tiles.y * grid.cell_size)
+	if mouse_local.x <= EDGE_PAN_MARGIN_PIXELS:
+		pan_delta.x -= 1
+	elif mouse_local.x >= map_pixel_width - EDGE_PAN_MARGIN_PIXELS:
+		pan_delta.x += 1
+	if mouse_local.y <= EDGE_PAN_MARGIN_PIXELS:
+		pan_delta.y -= 1
+	elif mouse_local.y >= map_pixel_height - EDGE_PAN_MARGIN_PIXELS:
+		pan_delta.y += 1
+
+	if pan_delta == Vector2i.ZERO:
+		edge_pan_accumulator = 0.0
+		return
+
+	edge_pan_accumulator += delta
+	var moved = false
+	while edge_pan_accumulator >= EDGE_PAN_INTERVAL:
+		edge_pan_accumulator -= EDGE_PAN_INTERVAL
+		camera_cell += pan_delta
+		_clamp_camera()
+		moved = true
+
+	if moved:
+		_sync_presentation()
