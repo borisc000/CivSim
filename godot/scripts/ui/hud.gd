@@ -33,7 +33,7 @@ func _build_ui() -> void:
 	sidebar.anchor_right = 1.0
 	sidebar.anchor_top = 0.0
 	sidebar.anchor_bottom = 1.0
-	sidebar.offset_left = -332.0
+	sidebar.offset_left = -360.0
 	sidebar.offset_right = -16.0
 	sidebar.offset_top = 16.0
 	sidebar.offset_bottom = -16.0
@@ -46,9 +46,17 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_bottom", 10)
 	sidebar.add_child(margin)
 
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	margin.add_child(scroll)
+
 	var layout = VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 8)
-	margin.add_child(layout)
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(layout)
 
 	var title = Label.new()
 	title.text = "CivSim Godot MVP"
@@ -132,6 +140,7 @@ func _build_ui() -> void:
 	logs_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	logs_label.text = "-"
 	logs_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	logs_label.custom_minimum_size = Vector2(0, 180)
 	layout.add_child(logs_label)
 
 	winner_label = Label.new()

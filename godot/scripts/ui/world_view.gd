@@ -3,6 +3,7 @@ extends Node2D
 
 signal tile_clicked(cell: Vector2i, button_index: int)
 signal tile_hovered(cell: Vector2i)
+signal zoom_requested(direction: int, focus_cell: Vector2i)
 
 var state = null
 var rules = null
@@ -31,6 +32,10 @@ func set_camera(p_camera_cell: Vector2i) -> void:
 	camera_cell = p_camera_cell
 	queue_redraw()
 
+func set_view_tiles(p_view_tiles: Vector2i) -> void:
+	view_tiles = p_view_tiles
+	queue_redraw()
+
 func set_selection(p_selected_unit, p_selected_city, p_reachable_cells: Array) -> void:
 	selected_unit = p_selected_unit
 	selected_city = p_selected_city
@@ -54,13 +59,18 @@ func _input(event: InputEvent) -> void:
 			hover_cell = Vector2i(-1, -1)
 
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
-			return
 		var local_pos = to_local(event.position)
 		if not _inside_map(local_pos):
 			return
 		var cell = grid.local_to_cell(local_pos, camera_cell)
-		tile_clicked.emit(cell, event.button_index)
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom_requested.emit(1, cell)
+			return
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom_requested.emit(-1, cell)
+			return
+		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+			tile_clicked.emit(cell, event.button_index)
 
 func _draw() -> void:
 	if state == null or rules == null or grid == null:
@@ -153,18 +163,33 @@ func _draw_units(human) -> void:
 			_draw_unit(local_pos, unit.type_id, player.color, player.dark_color, float(unit.hp) / float(unit.max_hp))
 
 func _draw_unit(local_pos: Vector2, unit_type: String, color_main: Color, color_dark: Color, hp_ratio: float) -> void:
-	draw_rect(Rect2(local_pos, Vector2(16, 16)), color_dark, true)
-	draw_rect(Rect2(local_pos + Vector2(2, 2), Vector2(12, 12)), color_main, true)
-
-	if unit_type == "settler":
-		draw_rect(Rect2(local_pos + Vector2(6, 1), Vector2(4, 3)), Color("#f7f0d0"), true)
-		draw_rect(Rect2(local_pos + Vector2(3, 6), Vector2(10, 3)), Color("#f7f0d0"), true)
-	elif unit_type == "warrior":
-		draw_rect(Rect2(local_pos + Vector2(6, 1), Vector2(4, 3)), Color("#f7f0d0"), true)
-		draw_rect(Rect2(local_pos + Vector2(11, 3), Vector2(2, 9)), Color("#a7d7ff"), true)
-	elif unit_type == "scout":
-		draw_rect(Rect2(local_pos + Vector2(5, 1), Vector2(6, 3)), Color("#f7f0d0"), true)
-		draw_rect(Rect2(local_pos + Vector2(3, 10), Vector2(10, 2)), Color("#a7d7ff"), true)
+	var skin = Color("#f7f0d0")
+	match unit_type:
+		"settler":
+			draw_rect(Rect2(local_pos + Vector2(6, 1), Vector2(4, 3)), skin, true)
+			draw_rect(Rect2(local_pos + Vector2(5, 4), Vector2(6, 8)), color_main, true)
+			draw_rect(Rect2(local_pos + Vector2(4, 11), Vector2(3, 4)), color_dark, true)
+			draw_rect(Rect2(local_pos + Vector2(9, 11), Vector2(3, 4)), color_dark, true)
+			draw_rect(Rect2(local_pos + Vector2(2, 5), Vector2(3, 7)), Color("#7b5f3f"), true)
+			draw_rect(Rect2(local_pos + Vector2(12, 5), Vector2(2, 9)), Color("#c6a36c"), true)
+		"warrior":
+			draw_rect(Rect2(local_pos + Vector2(6, 1), Vector2(4, 3)), skin, true)
+			draw_rect(Rect2(local_pos + Vector2(5, 4), Vector2(6, 8)), color_main, true)
+			draw_rect(Rect2(local_pos + Vector2(1, 5), Vector2(4, 8)), Color("#6d88a8"), true)
+			draw_rect(Rect2(local_pos + Vector2(12, 2), Vector2(2, 12)), Color("#d8d8d8"), true)
+			draw_rect(Rect2(local_pos + Vector2(11, 1), Vector2(4, 2)), Color("#a7d7ff"), true)
+			draw_rect(Rect2(local_pos + Vector2(4, 11), Vector2(3, 4)), color_dark, true)
+			draw_rect(Rect2(local_pos + Vector2(9, 11), Vector2(3, 4)), color_dark, true)
+		"scout":
+			draw_rect(Rect2(local_pos + Vector2(5, 1), Vector2(6, 3)), skin, true)
+			draw_rect(Rect2(local_pos + Vector2(4, 4), Vector2(8, 7)), color_main, true)
+			draw_rect(Rect2(local_pos + Vector2(2, 6), Vector2(2, 6)), color_dark, true)
+			draw_rect(Rect2(local_pos + Vector2(12, 6), Vector2(2, 6)), color_dark, true)
+			draw_rect(Rect2(local_pos + Vector2(6, 0), Vector2(4, 2)), Color("#a7d7ff"), true)
+			draw_rect(Rect2(local_pos + Vector2(3, 11), Vector2(10, 3)), Color("#4a5f70"), true)
+		_:
+			draw_rect(Rect2(local_pos + Vector2(2, 2), Vector2(12, 12)), color_main, true)
+			draw_rect(Rect2(local_pos + Vector2(4, 4), Vector2(8, 8)), color_dark, true)
 
 	draw_rect(Rect2(local_pos + Vector2(0, -3), Vector2(16, 2)), Color("#111820"), true)
 	draw_rect(Rect2(local_pos + Vector2(0, -3), Vector2(max(1, int(16.0 * hp_ratio)), 2)), Color("#6adf7a"), true)

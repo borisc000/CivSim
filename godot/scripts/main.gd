@@ -24,12 +24,19 @@ var view_tiles = Vector2i(30, 20)
 var camera_cell = Vector2i.ZERO
 var hover_cell = Vector2i(-1, -1)
 
+const MAP_VIEW_SIZE_PIXELS = Vector2i(960, 640)
+const MIN_CELL_SIZE = 20
+const MAX_CELL_SIZE = 56
+const ZOOM_STEP_PIXELS = 4
+
 func _ready() -> void:
 	rng.randomize()
+	_recalculate_view_tiles()
 
 	world_view.configure(grid, rules, map_size, view_tiles)
 	world_view.tile_clicked.connect(_on_tile_clicked)
 	world_view.tile_hovered.connect(_on_tile_hovered)
+	world_view.zoom_requested.connect(_on_zoom_requested)
 
 	hud.end_turn_requested.connect(_on_end_turn_requested)
 	hud.found_city_requested.connect(_on_found_city_requested)
@@ -154,13 +161,38 @@ func _find_spawn_cell_around(origin: Vector2i) -> Vector2i:
 	return origin
 
 func _move_camera(delta: Vector2i) -> void:
-	camera_cell.x = clampi(camera_cell.x + delta.x, 0, max(0, map_size.x - view_tiles.x))
-	camera_cell.y = clampi(camera_cell.y + delta.y, 0, max(0, map_size.y - view_tiles.y))
+	camera_cell += delta
+	_clamp_camera()
 	_sync_presentation()
 
 func _center_camera_on(cell: Vector2i) -> void:
-	camera_cell.x = clampi(cell.x - int(view_tiles.x / 2), 0, max(0, map_size.x - view_tiles.x))
-	camera_cell.y = clampi(cell.y - int(view_tiles.y / 2), 0, max(0, map_size.y - view_tiles.y))
+	camera_cell = cell - Vector2i(int(view_tiles.x / 2), int(view_tiles.y / 2))
+	_clamp_camera()
+
+func _clamp_camera() -> void:
+	camera_cell.x = clampi(camera_cell.x, 0, max(0, map_size.x - view_tiles.x))
+	camera_cell.y = clampi(camera_cell.y, 0, max(0, map_size.y - view_tiles.y))
+
+func _recalculate_view_tiles() -> void:
+	view_tiles = Vector2i(
+		max(8, int(floor(float(MAP_VIEW_SIZE_PIXELS.x) / float(grid.cell_size)))),
+		max(6, int(floor(float(MAP_VIEW_SIZE_PIXELS.y) / float(grid.cell_size))))
+	)
+
+func _on_zoom_requested(direction: int, focus_cell: Vector2i) -> void:
+	var old_cell_size = grid.cell_size
+	var new_cell_size = clampi(old_cell_size + direction * ZOOM_STEP_PIXELS, MIN_CELL_SIZE, MAX_CELL_SIZE)
+	if new_cell_size == old_cell_size:
+		return
+
+	grid.cell_size = new_cell_size
+	_recalculate_view_tiles()
+	world_view.set_view_tiles(view_tiles)
+
+	if state.in_bounds(focus_cell):
+		camera_cell = focus_cell - Vector2i(int(view_tiles.x / 2), int(view_tiles.y / 2))
+	_clamp_camera()
+	_sync_presentation()
 
 func _on_tile_hovered(cell: Vector2i) -> void:
 	hover_cell = cell
