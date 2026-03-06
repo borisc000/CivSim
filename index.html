@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CivSim Pixel MVP</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <section class="surface game-surface">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MVP Jugable</p>
+            <h1>CivSim Pixel Frontiers</h1>
+            <p class="subtitle">
+              Explora, funda ciudades, produce unidades y derrota a la civilizacion rival.
+            </p>
+          </div>
+          <div class="topbar-actions">
+            <button id="newGameBtn" class="ghost-btn">Nuevo mundo</button>
+            <button id="endTurnBtn" class="primary-btn">Terminar turno</button>
+          </div>
+        </header>
+
+        <div class="game-frame">
+          <canvas id="gameCanvas" width="960" height="640" aria-label="Mapa del juego"></canvas>
+          <div id="winnerBanner" class="winner-banner hidden"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="surface hud-card stats-card">
+          <div class="stat-grid">
+            <div>
+              <span class="label">Turno</span>
+              <strong id="turnStat">1</strong>
+            </div>
+            <div>
+              <span class="label">Civilizacion activa</span>
+              <strong id="activePlayerStat">Jugador</strong>
+            </div>
+            <div>
+              <span class="label">Oro</span>
+              <strong id="goldStat">0</strong>
+            </div>
+            <div>
+              <span class="label">Ciencia</span>
+              <strong id="scienceStat">0</strong>
+            </div>
+            <div>
+              <span class="label">Ciudades</span>
+              <strong id="cityStat">0</strong>
+            </div>
+            <div>
+              <span class="label">Unidades</span>
+              <strong id="unitStat">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface hud-card">
+          <div class="section-head">
+            <h2>Seleccion</h2>
+            <span id="selectionMode" class="selection-tag">Nada</span>
+          </div>
+          <div id="selectionInfo" class="selection-info">
+            Selecciona una unidad o ciudad para ver detalles y acciones.
+          </div>
+          <div class="action-row">
+            <button id="foundCityBtn" class="action-btn" disabled>Fundar ciudad</button>
+          </div>
+          <div class="action-row build-row">
+            <button id="queueWarriorBtn" class="action-btn" disabled>Guerrero</button>
+            <button id="queueScoutBtn" class="action-btn" disabled>Explorador</button>
+            <button id="queueSettlerBtn" class="action-btn" disabled>Colono</button>
+          </div>
+        </section>
+
+        <section class="surface hud-card">
+          <div class="section-head">
+            <h2>Terreno</h2>
+            <span id="hoverCoords" class="selection-tag">-</span>
+          </div>
+          <div id="tileInfo" class="selection-info">Mueve el cursor sobre el mapa para inspeccionar casillas.</div>
+        </section>
+
+        <section class="surface hud-card">
+          <div class="section-head">
+            <h2>Mini mapa</h2>
+            <span class="selection-tag">Fog</span>
+          </div>
+          <canvas id="minimapCanvas" width="240" height="150" aria-label="Mini mapa"></canvas>
+        </section>
+
+        <section class="surface hud-card controls-card">
+          <h2>Controles</h2>
+          <ul>
+            <li>Click izquierdo: seleccionar o mover dentro del alcance.</li>
+            <li>Click sobre enemigo adyacente: atacar.</li>
+            <li>F: fundar ciudad con un colono.</li>
+            <li>Enter: terminar turno.</li>
+            <li>WASD o flechas: mover camara.</li>
+          </ul>
+        </section>
+
+        <section class="surface hud-card log-card">
+          <div class="section-head">
+            <h2>Eventos</h2>
+            <span class="selection-tag">Ultimos 10</span>
+          </div>
+          <ul id="eventLog" class="event-log"></ul>
+        </section>
+      </aside>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
