@@ -45,9 +45,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		var local_pos := to_local(event.position)
+		var local_pos = to_local(event.position)
 		if _inside_map(local_pos):
-			var cell := grid.local_to_cell(local_pos, camera_cell)
+			var cell = grid.local_to_cell(local_pos, camera_cell)
 			hover_cell = cell
 			tile_hovered.emit(cell)
 		else:
@@ -56,10 +56,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
 			return
-		var local_pos := to_local(event.position)
+		var local_pos = to_local(event.position)
 		if not _inside_map(local_pos):
 			return
-		var cell := grid.local_to_cell(local_pos, camera_cell)
+		var cell = grid.local_to_cell(local_pos, camera_cell)
 		tile_clicked.emit(cell, event.button_index)
 
 func _draw() -> void:
@@ -69,15 +69,15 @@ func _draw() -> void:
 	var human = state.get_player_by_id(0)
 	for y in range(view_tiles.y):
 		for x in range(view_tiles.x):
-			var cell := camera_cell + Vector2i(x, y)
-			var local_pos := grid.cell_to_local(cell, camera_cell)
-			var tile_rect := Rect2(local_pos, Vector2(grid.cell_size, grid.cell_size))
+			var cell = camera_cell + Vector2i(x, y)
+			var local_pos = grid.cell_to_local(cell, camera_cell)
+			var tile_rect = Rect2(local_pos, Vector2(grid.cell_size, grid.cell_size))
 
 			if not state.in_bounds(cell):
 				draw_rect(tile_rect, Color("#05080c"), true)
 				continue
 
-			var explored := human.explored_cells.has(_key(cell))
+			var explored = human.explored_cells.has(_key(cell))
 			if not explored:
 				draw_rect(tile_rect, Color("#05080c"), true)
 				continue
@@ -98,8 +98,8 @@ func _draw() -> void:
 	_draw_grid()
 
 func _draw_terrain_pattern(tile_rect: Rect2, terrain_id: String, accent: Color) -> void:
-	var x := tile_rect.position.x
-	var y := tile_rect.position.y
+	var x = tile_rect.position.x
+	var y = tile_rect.position.y
 	if terrain_id == "water":
 		for i in range(3):
 			draw_rect(Rect2(Vector2(x + 4 + i * 8, y + 5 + (i % 2) * 4), Vector2(4, 2)), accent, true)
@@ -121,8 +121,8 @@ func _draw_reachable_cells() -> void:
 	for cell in reachable_cells:
 		if not _in_view(cell):
 			continue
-		var local_pos := grid.cell_to_local(cell, camera_cell)
-		var rect := Rect2(local_pos + Vector2(2, 2), Vector2(grid.cell_size - 4, grid.cell_size - 4))
+		var local_pos = grid.cell_to_local(cell, camera_cell)
+		var rect = Rect2(local_pos + Vector2(2, 2), Vector2(grid.cell_size - 4, grid.cell_size - 4))
 		draw_rect(rect, Color(1.0, 0.75, 0.34, 0.22), true)
 
 func _draw_cities(human) -> void:
@@ -132,11 +132,11 @@ func _draw_cities(human) -> void:
 				continue
 			if not human.visible_cells.has(_key(city.cell)):
 				continue
-			var local_pos := grid.cell_to_local(city.cell, camera_cell)
+			var local_pos = grid.cell_to_local(city.cell, camera_cell)
 			_draw_city(local_pos, player.color, player.dark_color)
 
 func _draw_city(local_pos: Vector2, color_main: Color, color_dark: Color) -> void:
-	var base := local_pos + Vector2(5, 5)
+	var base = local_pos + Vector2(5, 5)
 	draw_rect(Rect2(base, Vector2(22, 22)), Color("#e7dcb6"), true)
 	draw_rect(Rect2(base + Vector2(3, 3), Vector2(16, 16)), color_main, true)
 	draw_rect(Rect2(base + Vector2(7, 1), Vector2(8, 6)), color_dark, true)
@@ -149,7 +149,7 @@ func _draw_units(human) -> void:
 				continue
 			if not human.visible_cells.has(_key(unit.cell)):
 				continue
-			var local_pos := grid.cell_to_local(unit.cell, camera_cell) + Vector2(8, 8)
+			var local_pos = grid.cell_to_local(unit.cell, camera_cell) + Vector2(8, 8)
 			_draw_unit(local_pos, unit.type_id, player.color, player.dark_color, float(unit.hp) / float(unit.max_hp))
 
 func _draw_unit(local_pos: Vector2, unit_type: String, color_main: Color, color_dark: Color, hp_ratio: float) -> void:
@@ -171,11 +171,11 @@ func _draw_unit(local_pos: Vector2, unit_type: String, color_main: Color, color_
 
 func _draw_selection() -> void:
 	if selected_unit != null and _in_view(selected_unit.cell):
-		var local_pos := grid.cell_to_local(selected_unit.cell, camera_cell)
+		var local_pos = grid.cell_to_local(selected_unit.cell, camera_cell)
 		draw_rect(Rect2(local_pos + Vector2(2, 2), Vector2(grid.cell_size - 4, grid.cell_size - 4)), Color("#ffd15f"), false, 3.0)
 
 	if selected_city != null and _in_view(selected_city.cell):
-		var local_pos := grid.cell_to_local(selected_city.cell, camera_cell)
+		var local_pos = grid.cell_to_local(selected_city.cell, camera_cell)
 		draw_rect(Rect2(local_pos + Vector2(2, 2), Vector2(grid.cell_size - 4, grid.cell_size - 4)), Color("#81e2ff"), false, 3.0)
 
 func _draw_hover() -> void:
@@ -183,17 +183,17 @@ func _draw_hover() -> void:
 		return
 	if not _in_view(hover_cell):
 		return
-	var local_pos := grid.cell_to_local(hover_cell, camera_cell)
+	var local_pos = grid.cell_to_local(hover_cell, camera_cell)
 	draw_rect(Rect2(local_pos + Vector2(1, 1), Vector2(grid.cell_size - 2, grid.cell_size - 2)), Color(1, 1, 1, 0.55), false, 1.0)
 
 func _draw_grid() -> void:
-	var draw_w := view_tiles.x * grid.cell_size
-	var draw_h := view_tiles.y * grid.cell_size
+	var draw_w = view_tiles.x * grid.cell_size
+	var draw_h = view_tiles.y * grid.cell_size
 	for x in range(view_tiles.x + 1):
-		var px := x * grid.cell_size
+		var px = x * grid.cell_size
 		draw_line(Vector2(px, 0), Vector2(px, draw_h), Color(0, 0, 0, 0.16), 1.0)
 	for y in range(view_tiles.y + 1):
-		var py := y * grid.cell_size
+		var py = y * grid.cell_size
 		draw_line(Vector2(0, py), Vector2(draw_w, py), Color(0, 0, 0, 0.16), 1.0)
 
 func _inside_map(local_pos: Vector2) -> bool:

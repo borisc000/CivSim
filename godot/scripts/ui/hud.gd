@@ -23,11 +23,11 @@ func _ready() -> void:
 	_build_ui()
 
 func _build_ui() -> void:
-	var root := Control.new()
+	var root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
 
-	var sidebar := PanelContainer.new()
+	var sidebar = PanelContainer.new()
 	sidebar.anchor_left = 1.0
 	sidebar.anchor_right = 1.0
 	sidebar.anchor_top = 0.0
@@ -38,31 +38,31 @@ func _build_ui() -> void:
 	sidebar.offset_bottom = -16.0
 	root.add_child(sidebar)
 
-	var margin := MarginContainer.new()
+	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_right", 10)
 	margin.add_theme_constant_override("margin_bottom", 10)
 	sidebar.add_child(margin)
 
-	var layout := VBoxContainer.new()
+	var layout = VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 8)
 	margin.add_child(layout)
 
-	var title := Label.new()
+	var title = Label.new()
 	title.text = "CivSim Godot MVP"
 	title.add_theme_font_size_override("font_size", 18)
 	layout.add_child(title)
 
-	var subtitle := Label.new()
+	var subtitle = Label.new()
 	subtitle.text = "Turnos, ciudades, IA, pixel art sobrio"
 	subtitle.modulate = Color("#afbea8")
 	layout.add_child(subtitle)
 
-	var top_buttons := HBoxContainer.new()
+	var top_buttons = HBoxContainer.new()
 	layout.add_child(top_buttons)
 
-	var new_game_button := Button.new()
+	var new_game_button = Button.new()
 	new_game_button.text = "Nuevo Mundo"
 	new_game_button.pressed.connect(func() -> void: new_game_requested.emit())
 	top_buttons.add_child(new_game_button)
@@ -98,7 +98,7 @@ func _build_ui() -> void:
 	found_city_button.pressed.connect(func() -> void: found_city_requested.emit())
 	layout.add_child(found_city_button)
 
-	var queue_row := HBoxContainer.new()
+	var queue_row = HBoxContainer.new()
 	layout.add_child(queue_row)
 
 	queue_warrior_button = Button.new()
@@ -140,11 +140,11 @@ func _build_ui() -> void:
 	layout.add_child(winner_label)
 
 func _separator() -> HSeparator:
-	var sep := HSeparator.new()
+	var sep = HSeparator.new()
 	return sep
 
 func _section_label(text: String) -> Label:
-	var label := Label.new()
+	var label = Label.new()
 	label.text = text
 	label.modulate = Color("#ffbf56")
 	label.add_theme_font_size_override("font_size", 14)

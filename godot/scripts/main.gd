@@ -18,11 +18,11 @@ var combat_service = CombatService.new()
 var ai_service = AIService.new()
 var grid = SquareGridAdapter.new(32)
 
-var rng := RandomNumberGenerator.new()
-var map_size := Vector2i(44, 28)
-var view_tiles := Vector2i(30, 20)
-var camera_cell := Vector2i.ZERO
-var hover_cell := Vector2i(-1, -1)
+var rng = RandomNumberGenerator.new()
+var map_size = Vector2i(44, 28)
+var view_tiles = Vector2i(30, 20)
+var camera_cell = Vector2i.ZERO
+var hover_cell = Vector2i(-1, -1)
 
 func _ready() -> void:
 	rng.randomize()
@@ -62,18 +62,18 @@ func _new_game() -> void:
 	state.map_height = map_size.y
 	state.tiles = map_generator.generate(map_size.x, map_size.y, rng)
 
-	var human := PlayerData.new(0, "Liga Solar", Color("#f8d36a"), Color("#7f5e21"), true)
-	var ai := PlayerData.new(1, "Pacto Carmesi", Color("#f27768"), Color("#6d2a26"), false)
+	var human = PlayerData.new(0, "Liga Solar", Color("#f8d36a"), Color("#7f5e21"), true)
+	var ai = PlayerData.new(1, "Pacto Carmesi", Color("#f27768"), Color("#6d2a26"), false)
 	state.players = [human, ai]
 
-	var starts := _find_start_positions(2)
+	var starts = _find_start_positions(2)
 	for i in range(state.players.size()):
 		var player = state.players[i]
 		var start_cell: Vector2i = starts[i]
 		_spawn_unit(player.id, "settler", start_cell)
-		var guard_cell := _find_spawn_cell_around(start_cell)
+		var guard_cell = _find_spawn_cell_around(start_cell)
 		_spawn_unit(player.id, "warrior", guard_cell)
-		var scout_cell := _find_spawn_cell_around(start_cell)
+		var scout_cell = _find_spawn_cell_around(start_cell)
 		if state.get_unit_at(scout_cell) == null:
 			_spawn_unit(player.id, "scout", scout_cell)
 
@@ -90,13 +90,13 @@ func _new_game() -> void:
 
 func _find_start_positions(count: int) -> Array:
 	var starts: Array = []
-	var attempts := 0
+	var attempts = 0
 	while starts.size() < count and attempts < 9000:
 		attempts += 1
-		var cell := Vector2i(rng.randi_range(3, map_size.x - 4), rng.randi_range(3, map_size.y - 4))
+		var cell = Vector2i(rng.randi_range(3, map_size.x - 4), rng.randi_range(3, map_size.y - 4))
 		if not _can_start_at(cell):
 			continue
-		var too_close := false
+		var too_close = false
 		for existing in starts:
 			if grid.distance(existing, cell) < 18:
 				too_close = true
@@ -107,9 +107,9 @@ func _find_start_positions(count: int) -> Array:
 
 	while starts.size() < count:
 		for y in range(1, map_size.y - 1):
-			var found := false
+			var found = false
 			for x in range(1, map_size.x - 1):
-				var cell := Vector2i(x, y)
+				var cell = Vector2i(x, y)
 				if _can_start_at(cell):
 					starts.append(cell)
 					found = true
@@ -140,7 +140,7 @@ func _create_city(owner_id: int, cell: Vector2i):
 	return city
 
 func _find_spawn_cell_around(origin: Vector2i) -> Vector2i:
-	var candidates := [
+	var candidates = [
 		origin + Vector2i(1, 0),
 		origin + Vector2i(-1, 0),
 		origin + Vector2i(0, 1),
@@ -242,13 +242,13 @@ func _issue_unit_order(unit, target_cell: Vector2i) -> void:
 		state.log("Un colono no puede capturar ciudades.")
 		return
 
-	var reachable := _reachable_map_for_unit(unit, true)
-	var key := _key(target_cell)
+	var reachable = _reachable_map_for_unit(unit, true)
+	var key = _key(target_cell)
 	if not reachable.has(key):
 		state.log("Destino fuera de alcance o bloqueado.")
 		return
 
-	var path := _reconstruct_path(reachable, target_cell)
+	var path = _reconstruct_path(reachable, target_cell)
 	if path.is_empty():
 		return
 	_move_unit_along_path(unit, path)
@@ -256,7 +256,7 @@ func _issue_unit_order(unit, target_cell: Vector2i) -> void:
 	_check_victory()
 
 func _resolve_combat(attacker, defender) -> void:
-	var defender_cell := defender.cell
+	var defender_cell = defender.cell
 	var terrain_id: String = state.tiles[defender.cell.y][defender.cell.x]
 	var result: Dictionary = combat_service.resolve(attacker, defender, terrain_id, rules, rng)
 
@@ -281,15 +281,15 @@ func _can_move_to(cell: Vector2i) -> bool:
 	return rules.terrain_move_cost(terrain) < 999
 
 func _reachable_map_for_unit(unit, allow_enemy_city_destination: bool) -> Dictionary:
-	var visited := {}
+	var visited = {}
 	visited[_key(unit.cell)] = {"cost": 0, "prev": "", "cell": unit.cell}
 	var frontier: Array = [unit.cell]
 
 	while not frontier.is_empty():
-		var best_index := 0
-		var best_cost := int(visited[_key(frontier[0])]["cost"])
+		var best_index = 0
+		var best_cost = int(visited[_key(frontier[0])]["cost"])
 		for i in range(1, frontier.size()):
-			var c := int(visited[_key(frontier[i])]["cost"])
+			var c = int(visited[_key(frontier[i])]["cost"])
 			if c < best_cost:
 				best_cost = c
 				best_index = i
@@ -300,8 +300,8 @@ func _reachable_map_for_unit(unit, allow_enemy_city_destination: bool) -> Dictio
 			if not _can_move_to(neighbor):
 				continue
 			var terrain: String = state.tiles[neighbor.y][neighbor.x]
-			var move_cost := rules.terrain_move_cost(terrain)
-			var new_cost := int(visited[_key(current)]["cost"]) + move_cost
+			var move_cost = rules.terrain_move_cost(terrain)
+			var new_cost = int(visited[_key(current)]["cost"]) + move_cost
 			if new_cost > unit.moves_left:
 				continue
 
@@ -313,7 +313,7 @@ func _reachable_map_for_unit(unit, allow_enemy_city_destination: bool) -> Dictio
 			if city != null and city.owner_id != unit.owner_id and not allow_enemy_city_destination:
 				continue
 
-			var n_key := _key(neighbor)
+			var n_key = _key(neighbor)
 			if not visited.has(n_key) or new_cost < int(visited[n_key]["cost"]):
 				visited[n_key] = {"cost": new_cost, "prev": _key(current), "cell": neighbor}
 				if neighbor not in frontier:
@@ -324,7 +324,7 @@ func _reachable_map_for_unit(unit, allow_enemy_city_destination: bool) -> Dictio
 
 func _reconstruct_path(visited: Dictionary, target_cell: Vector2i) -> Array:
 	var out: Array = []
-	var cursor := _key(target_cell)
+	var cursor = _key(target_cell)
 	while cursor != "":
 		if not visited.has(cursor):
 			break
@@ -334,14 +334,14 @@ func _reconstruct_path(visited: Dictionary, target_cell: Vector2i) -> Array:
 	return out
 
 func _move_unit_along_path(unit, path: Array) -> void:
-	var current := unit.cell
+	var current = unit.cell
 	for step in path:
 		if step == current:
 			continue
 		var occupant = state.get_unit_at(step)
 		if occupant != null and occupant.id != unit.id:
 			break
-		var move_cost := rules.terrain_move_cost(state.tiles[step.y][step.x])
+		var move_cost = rules.terrain_move_cost(state.tiles[step.y][step.x])
 		if unit.moves_left < move_cost:
 			break
 		unit.cell = step
@@ -358,7 +358,7 @@ func _capture_if_on_enemy_city(unit) -> void:
 		state.log("%s captura %s." % [state.get_player_by_id(unit.owner_id).name, city.name])
 
 func _check_victory() -> void:
-	var alive := state.alive_players()
+	var alive = state.alive_players()
 	if alive.size() == 1:
 		state.winner_player_id = alive[0].id
 		state.log("%s domina el mundo." % [alive[0].name])
@@ -453,13 +453,13 @@ func _start_current_player_turn() -> void:
 
 func _process_end_of_turn(player) -> void:
 	for city in player.cities:
-		var yield_data := _compute_city_yield(city)
+		var yield_data = _compute_city_yield(city)
 		city.food_stock += yield_data["food"]
 		city.production_stock += yield_data["production"]
 		player.gold += yield_data["gold"]
 		player.science += max(1, int((yield_data["food"] + yield_data["production"]) / 2))
 
-		var growth_cost := 8 + city.population * 4
+		var growth_cost = 8 + city.population * 4
 		if city.food_stock >= growth_cost:
 			city.food_stock -= growth_cost
 			city.population += 1
@@ -470,7 +470,7 @@ func _process_end_of_turn(player) -> void:
 		if city.queue_type != "":
 			var unit_info: Dictionary = rules.unit_info(city.queue_type)
 			if city.production_stock >= int(unit_info["cost"]):
-				var spawn_cell := _find_spawn_cell_around(city.cell)
+				var spawn_cell = _find_spawn_cell_around(city.cell)
 				if state.get_unit_at(spawn_cell) == null:
 					city.production_stock -= int(unit_info["cost"])
 					_spawn_unit(player.id, city.queue_type, spawn_cell)
@@ -487,13 +487,13 @@ func _process_end_of_turn(player) -> void:
 func _compute_city_yield(city) -> Dictionary:
 	var center_terrain: String = state.tiles[city.cell.y][city.cell.x]
 	var center_yield: Dictionary = rules.terrain_yield(center_terrain)
-	var out := {
+	var out = {
 		"food": int(center_yield["food"]) + 1,
 		"production": int(center_yield["production"]) + 1,
 		"gold": int(center_yield["gold"]) + 1,
 	}
 
-	var worked := _worked_tiles(city)
+	var worked = _worked_tiles(city)
 	for cell in worked:
 		var terrain: String = state.tiles[cell.y][cell.x]
 		var y: Dictionary = rules.terrain_yield(terrain)
@@ -508,19 +508,19 @@ func _worked_tiles(city) -> Array:
 		for ox in range(-1, 2):
 			if ox == 0 and oy == 0:
 				continue
-			var cell := city.cell + Vector2i(ox, oy)
+			var cell = city.cell + Vector2i(ox, oy)
 			if not state.in_bounds(cell):
 				continue
-			var terrain := state.tiles[cell.y][cell.x]
+			var terrain = state.tiles[cell.y][cell.x]
 			if terrain == "water":
 				continue
-			var y := rules.terrain_yield(terrain)
-			var score := int(y["food"]) * 2 + int(y["production"]) * 2 + int(y["gold"])
+			var y = rules.terrain_yield(terrain)
+			var score = int(y["food"]) * 2 + int(y["production"]) * 2 + int(y["gold"])
 			scored.append({"cell": cell, "score": score})
 
 	scored.sort_custom(func(a, b): return int(a["score"]) > int(b["score"]))
 	var out: Array = []
-	var max_count := max(0, city.population - 1)
+	var max_count = max(0, city.population - 1)
 	for i in range(min(max_count, scored.size())):
 		out.append(scored[i]["cell"])
 	return out
@@ -528,7 +528,7 @@ func _worked_tiles(city) -> Array:
 func _run_ai_turn(player) -> void:
 	state.log("%s esta resolviendo su turno." % [player.name])
 	ai_service.choose_city_queue(player, state, rules)
-	var units := player.units.duplicate()
+	var units = player.units.duplicate()
 	for unit in units:
 		if not player.units.has(unit):
 			continue
@@ -537,7 +537,7 @@ func _run_ai_turn(player) -> void:
 			continue
 		if _attack_adjacent_enemy(unit):
 			continue
-		var target := ai_service.nearest_enemy_target_cell(unit, state, grid)
+		var target = ai_service.nearest_enemy_target_cell(unit, state, grid)
 		_move_unit_toward(unit, target, true)
 		_capture_if_on_enemy_city(unit)
 		_attack_adjacent_enemy(unit)
@@ -548,7 +548,7 @@ func _run_ai_settler(unit) -> void:
 		state.remove_unit(unit)
 		state.log("%s funda %s." % [state.get_player_by_id(city.owner_id).name, city.name])
 		return
-	var target := ai_service.best_settler_site(unit, state, rules, grid)
+	var target = ai_service.best_settler_site(unit, state, rules, grid)
 	_move_unit_toward(unit, target, false)
 	if _can_found_city(unit) and ai_service.score_city_site(unit.cell, state, rules) >= 16:
 		var city = _create_city(unit.owner_id, unit.cell)
@@ -567,7 +567,7 @@ func _attack_adjacent_enemy(unit) -> bool:
 			return true
 		var city = state.get_city_at(cell)
 		if city != null and city.owner_id != unit.owner_id:
-			var move_cost := rules.terrain_move_cost(state.tiles[cell.y][cell.x])
+			var move_cost = rules.terrain_move_cost(state.tiles[cell.y][cell.x])
 			if unit.moves_left >= move_cost:
 				unit.cell = cell
 				unit.moves_left -= move_cost
@@ -578,21 +578,21 @@ func _attack_adjacent_enemy(unit) -> bool:
 func _move_unit_toward(unit, target: Vector2i, allow_enemy_city_destination: bool) -> void:
 	if unit.moves_left <= 0:
 		return
-	var reachable := _reachable_map_for_unit(unit, allow_enemy_city_destination)
-	var best_key := ""
-	var best_distance := 999999
-	var best_cost := 999999
+	var reachable = _reachable_map_for_unit(unit, allow_enemy_city_destination)
+	var best_key = ""
+	var best_distance = 999999
+	var best_cost = 999999
 	for key in reachable.keys():
 		var cell: Vector2i = reachable[key]["cell"]
-		var distance := grid.distance(cell, target)
-		var cost := int(reachable[key]["cost"])
+		var distance = grid.distance(cell, target)
+		var cost = int(reachable[key]["cost"])
 		if distance < best_distance or (distance == best_distance and cost < best_cost):
 			best_distance = distance
 			best_cost = cost
 			best_key = key
 	if best_key == "":
 		return
-	var path := _reconstruct_path(reachable, reachable[best_key]["cell"])
+	var path = _reconstruct_path(reachable, reachable[best_key]["cell"])
 	_move_unit_along_path(unit, path)
 
 func _refresh_visibility(player) -> void:
@@ -600,7 +600,7 @@ func _refresh_visibility(player) -> void:
 	var reveal = func(center: Vector2i, radius: int) -> void:
 		for oy in range(-radius, radius + 1):
 			for ox in range(-radius, radius + 1):
-				var cell := center + Vector2i(ox, oy)
+				var cell = center + Vector2i(ox, oy)
 				if not state.in_bounds(cell):
 					continue
 				if abs(ox) + abs(oy) > radius:
@@ -620,7 +620,7 @@ func _sync_presentation() -> void:
 
 	var reachable_cells: Array = []
 	if selected_unit != null:
-		var reach_map := _reachable_map_for_unit(selected_unit, true)
+		var reach_map = _reachable_map_for_unit(selected_unit, true)
 		for key in reach_map.keys():
 			reachable_cells.append(reach_map[key]["cell"])
 
@@ -643,7 +643,7 @@ func _sync_presentation() -> void:
 		selected_city != null and selected_city.population >= 2 and current != null and current.is_human
 	)
 
-	var winner_text := ""
+	var winner_text = ""
 	if state.winner_player_id != -1:
 		var winner = state.get_player_by_id(state.winner_player_id)
 		if winner != null:
@@ -670,7 +670,7 @@ func _selection_text(selected_unit, selected_city) -> String:
 			selected_unit.vision,
 		]
 	if selected_city != null:
-		var queue_name := "Sin produccion"
+		var queue_name = "Sin produccion"
 		if selected_city.queue_type != "":
 			queue_name = str(rules.unit_info(selected_city.queue_type)["name"])
 		return "Poblacion: %d\nComida: %d\nProduccion: %d\nCola: %s\nHP urbano: %d" % [
@@ -694,9 +694,9 @@ func _hover_tile_text() -> String:
 	if human == null or not human.explored_cells.has(_key(hover_cell)):
 		return "Territorio no explorado."
 	var terrain: String = state.tiles[hover_cell.y][hover_cell.x]
-	var info := rules.terrain_info(terrain)
-	var tile_yield := rules.terrain_yield(terrain)
-	var lines := [
+	var info = rules.terrain_info(terrain)
+	var tile_yield = rules.terrain_yield(terrain)
+	var lines = [
 		"Terreno: %s" % [info["name"]],
 		"Rendimiento: +%d comida, +%d produccion, +%d oro" % [tile_yield["food"], tile_yield["production"], tile_yield["gold"]],
 		"Movimiento: %s" % ["Bloqueado" if int(info["move_cost"]) >= 999 else str(info["move_cost"])],
