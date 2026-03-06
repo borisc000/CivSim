@@ -40,7 +40,7 @@ func set_selection(p_selected_unit, p_selected_city, p_reachable_cells: Array) -
 func _process(_delta: float) -> void:
 	queue_redraw()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if grid == null:
 		return
 

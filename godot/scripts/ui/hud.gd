@@ -25,6 +25,7 @@ func _ready() -> void:
 func _build_ui() -> void:
 	var root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(root)
 
 	var sidebar = PanelContainer.new()
